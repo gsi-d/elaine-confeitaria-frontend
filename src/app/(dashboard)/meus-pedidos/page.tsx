@@ -1,0 +1,156 @@
+"use client";
+
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import {
+  Alert,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  Divider,
+  Grid,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { useMemo, useSyncExternalStore } from "react";
+import { useOrders } from "@/features/orders/hooks/use-orders";
+import { Order } from "@/features/orders/types";
+
+function getScheduleLabel(order: Order): string {
+  return order.horarioEntrega ?? order.horarioRetirada ?? "Nao informado";
+}
+
+function getRecipientLabel(order: Order): string {
+  return order.nomeRecebedor ?? "Nao informado";
+}
+
+export default function MyOrdersPage() {
+  const search = useSyncExternalStore(
+    () => () => {},
+    () => window.location.search,
+    () => "",
+  );
+  const { data = [], isLoading, isError } = useOrders();
+  const currentOrderId = useMemo(() => {
+    const params = new URLSearchParams(search);
+    const current = Number(params.get("current"));
+    return Number.isFinite(current) ? current : null;
+  }, [search]);
+  const orders = useMemo(
+    () => [...data].sort((left, right) => right.id - left.id),
+    [data],
+  );
+
+  return (
+    <Box sx={{ display: "grid", gap: 3 }}>
+      <Box>
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ alignItems: { md: "center" } }}>
+          <Typography variant="h4">Meus pedidos</Typography>
+          <Chip icon={<ReceiptLongRoundedIcon />} label={`${orders.length} pedidos encontrados`} />
+        </Stack>
+        <Typography color="text.secondary">
+          Acompanhe o pedido atual e consulte tambem os pedidos finalizados anteriormente.
+        </Typography>
+      </Box>
+
+      {isLoading ? (
+        <Box sx={{ minHeight: 260, display: "grid", placeItems: "center" }}>
+          <CircularProgress />
+        </Box>
+      ) : isError ? (
+        <Alert severity="error">Nao foi possivel carregar seus pedidos.</Alert>
+      ) : orders.length === 0 ? (
+        <Alert severity="info">Voce ainda nao possui pedidos cadastrados.</Alert>
+      ) : (
+        <Grid container spacing={3}>
+          {orders.map((order) => {
+            const isCurrent = currentOrderId !== null && order.id === currentOrderId;
+
+            return (
+              <Grid key={order.id} size={{ xs: 12, lg: 6 }}>
+                <Card
+                  sx={{
+                    height: "100%",
+                    border: isCurrent ? "2px solid" : "1px solid",
+                    borderColor: isCurrent ? "primary.main" : "divider",
+                    boxShadow: isCurrent ? "0 16px 36px rgba(216,111,157,0.16)" : undefined,
+                  }}
+                >
+                  <CardContent sx={{ display: "grid", gap: 2 }}>
+                    <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", flexWrap: "wrap" }}>
+                      <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                        <Chip label={`Pedido #${order.id}`} color={isCurrent ? "primary" : "default"} />
+                        <Chip label={order.tipoEntrega} variant="outlined" />
+                        {isCurrent ? <Chip label="Pedido atual" color="secondary" /> : null}
+                      </Stack>
+                      <Chip label={order.status} color="primary" variant="outlined" />
+                    </Stack>
+
+                    <Box sx={{ display: "grid", gap: 0.75 }}>
+                      <Typography variant="h6">{getRecipientLabel(order)}</Typography>
+                      <Typography color="text.secondary">
+                        {order.endereco ?? "Endereco nao informado"}
+                      </Typography>
+                    </Box>
+
+                    <Divider />
+
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Agendamento
+                        </Typography>
+                        <Typography>{getScheduleLabel(order)}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Itens
+                        </Typography>
+                        <Typography>{order.itens.length} item(ns)</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Desconto
+                        </Typography>
+                        <Typography>{order.desconto}%</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Observacoes
+                        </Typography>
+                        <Typography>{order.observacoes || "Sem observacoes"}</Typography>
+                      </Grid>
+                    </Grid>
+
+                    <Divider />
+
+                    <Box sx={{ display: "grid", gap: 1 }}>
+                      <Typography variant="subtitle2">Resumo dos itens</Typography>
+                      {order.itens.map((item, index) => (
+                        <Box
+                          key={`${order.id}-${item.produtoId}-${index}`}
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 2,
+                            p: 1.25,
+                            borderRadius: "16px",
+                            bgcolor: "rgba(216,111,157,0.06)",
+                          }}
+                        >
+                          <Typography>Produto #{item.produtoId}</Typography>
+                          <Typography>{item.quantidade} un.</Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  </CardContent>
+                </Card>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+    </Box>
+  );
+}
