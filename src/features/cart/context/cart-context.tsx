@@ -2,10 +2,11 @@
 
 import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { catalogProducts } from "@/features/catalog/data/products";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { CartItem, CheckoutDraft } from "@/features/cart/types";
 
-const STORAGE_KEY = "elaine_confeitaria_cart";
-const CHECKOUT_DRAFT_STORAGE_KEY = "elaine_confeitaria_checkout_draft";
+const STORAGE_KEY_PREFIX = "elaine_confeitaria_cart";
+const CHECKOUT_DRAFT_STORAGE_KEY_PREFIX = "elaine_confeitaria_checkout_draft";
 
 const defaultCheckoutDraft: CheckoutDraft = {
   tipoEntrega: "ENTREGA",
@@ -32,67 +33,80 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-export function CartProvider({ children }: PropsWithChildren) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window === "undefined") {
+function loadCartItems(storageKey: string) {
+  if (typeof window === "undefined") {
+    return [] as CartItem[];
+  }
+
+  const rawItems = window.localStorage.getItem(storageKey);
+  if (!rawItems) {
+    return [] as CartItem[];
+  }
+
+  return (JSON.parse(rawItems) as Array<Partial<CartItem>>).flatMap((item) => {
+    const matchedProduct = catalogProducts.find((product) => product.id === item.id);
+
+    if (!item.id || !item.nome || !item.precoUnitario || !item.quantidade) {
       return [];
     }
 
-    const rawItems = window.localStorage.getItem(STORAGE_KEY);
-    if (!rawItems) {
+    const produtoId = item.produtoId ?? matchedProduct?.produtoId;
+
+    if (!produtoId) {
       return [];
     }
 
-    return (JSON.parse(rawItems) as Array<Partial<CartItem>>).flatMap((item) => {
-      const matchedProduct = catalogProducts.find((product) => product.id === item.id);
-
-      if (!item.id || !item.nome || !item.precoUnitario || !item.quantidade) {
-        return [];
-      }
-
-      const produtoId = item.produtoId ?? matchedProduct?.produtoId;
-
-      if (!produtoId) {
-        return [];
-      }
-
-      return [
-        {
-          id: item.id,
-          produtoId,
-          nome: item.nome,
-          quantidade: item.quantidade,
-          precoUnitario: item.precoUnitario,
-        },
-      ];
-    });
+    return [
+      {
+        id: item.id,
+        produtoId,
+        nome: item.nome,
+        quantidade: item.quantidade,
+        precoUnitario: item.precoUnitario,
+      },
+    ];
   });
-  const [checkoutDraft, setCheckoutDraft] = useState<CheckoutDraft>(() => {
-    if (typeof window === "undefined") {
-      return defaultCheckoutDraft;
-    }
+}
 
-    const rawDraft = window.localStorage.getItem(CHECKOUT_DRAFT_STORAGE_KEY);
-    return rawDraft
-      ? { ...defaultCheckoutDraft, ...(JSON.parse(rawDraft) as Partial<CheckoutDraft>) }
-      : defaultCheckoutDraft;
-  });
+function loadCheckoutDraft(storageKey: string) {
+  if (typeof window === "undefined") {
+    return defaultCheckoutDraft;
+  }
+
+  const rawDraft = window.localStorage.getItem(storageKey);
+  return rawDraft
+    ? { ...defaultCheckoutDraft, ...(JSON.parse(rawDraft) as Partial<CheckoutDraft>) }
+    : defaultCheckoutDraft;
+}
+
+type ScopedCartProviderProps = PropsWithChildren<{
+  cartStorageKey: string;
+  checkoutDraftStorageKey: string;
+}>;
+
+function ScopedCartProvider({
+  children,
+  cartStorageKey,
+  checkoutDraftStorageKey,
+}: ScopedCartProviderProps) {
+  const [items, setItems] = useState<CartItem[]>(() => loadCartItems(cartStorageKey));
+  const [checkoutDraft, setCheckoutDraft] = useState<CheckoutDraft>(() => loadCheckoutDraft(checkoutDraftStorageKey));
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-  }, [items]);
+    window.localStorage.setItem(cartStorageKey, JSON.stringify(items));
+  }, [cartStorageKey, items]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    window.localStorage.setItem(CHECKOUT_DRAFT_STORAGE_KEY, JSON.stringify(checkoutDraft));
-  }, [checkoutDraft]);
+    window.localStorage.setItem(checkoutDraftStorageKey, JSON.stringify(checkoutDraft));
+  }, [checkoutDraft, checkoutDraftStorageKey]);
 
   const value = useMemo<CartContextValue>(
     () => ({
@@ -143,6 +157,23 @@ export function CartProvider({ children }: PropsWithChildren) {
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+}
+
+export function CartProvider({ children }: PropsWithChildren) {
+  const { user } = useAuth();
+  const storageScope = user?.id ? `user_${user.id}` : "guest";
+  const cartStorageKey = `${STORAGE_KEY_PREFIX}_${storageScope}`;
+  const checkoutDraftStorageKey = `${CHECKOUT_DRAFT_STORAGE_KEY_PREFIX}_${storageScope}`;
+
+  return (
+    <ScopedCartProvider
+      key={storageScope}
+      cartStorageKey={cartStorageKey}
+      checkoutDraftStorageKey={checkoutDraftStorageKey}
+    >
+      {children}
+    </ScopedCartProvider>
+  );
 }
 
 export function useCartContext() {

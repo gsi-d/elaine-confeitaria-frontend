@@ -6,10 +6,11 @@ import { OrderPayload } from "@/features/orders/types";
 
 const ORDERS_QUERY_KEY = ["orders"];
 
-export function useOrders() {
+export function useOrders(enabled = true) {
   return useQuery({
     queryKey: ORDERS_QUERY_KEY,
     queryFn: ordersService.list,
+    enabled,
   });
 }
 

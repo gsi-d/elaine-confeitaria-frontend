@@ -24,10 +24,13 @@ import { useMemo, useSyncExternalStore } from "react";
 import { useCart } from "@/features/cart/hooks/use-cart";
 import { useProducts } from "@/features/catalog/hooks/use-products";
 import { CatalogProduct } from "@/features/catalog/types";
+import { useAuth } from "@/features/auth/hooks/use-auth";
+import { useDeliveryConfiguration } from "@/features/delivery-config/hooks/use-delivery-config";
+import { guestOrdersStorage } from "@/features/orders/guest-orders-storage";
 import { useCreateOrder } from "@/features/orders/hooks/use-orders";
 import { useOrders } from "@/features/orders/hooks/use-orders";
 import { orderSchema } from "@/features/orders/schemas/order-schema";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatDeliveryEstimate } from "@/lib/utils/format";
 
 export default function CartPage() {
   const hasMounted = useSyncExternalStore(
@@ -35,6 +38,7 @@ export default function CartPage() {
     () => true,
     () => false,
   );
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
   const {
     addItem,
@@ -49,7 +53,13 @@ export default function CartPage() {
   } = useCart();
   const { data: products = [] } = useProducts();
   const { data: orders = [] } = useOrders();
+  const { data: deliveryConfiguration } = useDeliveryConfiguration();
   const createOrder = useCreateOrder();
+  const deliveryEstimateLabel = formatDeliveryEstimate(
+    deliveryConfiguration?.tempoMinimoMinutos,
+    deliveryConfiguration?.tempoMaximoMinutos,
+  );
+  const deliveryMessage = deliveryConfiguration?.mensagemLivre?.trim();
   const suggestedProducts = useMemo<CatalogProduct[]>(() => {
     const productsByProdutoId = new Map(products.map((product) => [product.produtoId, product] as const));
     const cartProdutoIds = new Set(items.map((item) => item.produtoId));
@@ -159,6 +169,9 @@ export default function CartPage() {
       desconto: result.data.desconto,
       itens: result.data.itens,
     });
+    if (!isAuthenticated) {
+      guestOrdersStorage.add(createdOrder);
+    }
     clearCart();
     resetCheckoutDraft();
     enqueueSnackbar("Pedido enviado com sucesso.", { variant: "success" });
@@ -174,15 +187,15 @@ export default function CartPage() {
           sx={{ alignItems: { xs: "flex-start", md: "center" } }}
         >
           <Typography variant="h4">Carrinho</Typography>
-          <Chip label="Fluxo de fechamento inspirado em delivery" color="secondary" variant="outlined" />
+          <Chip label="Finalização do pedido" color="secondary" variant="outlined" />
         </Stack>
         <Typography color="text.secondary">
-          O carrinho e os dados do checkout ficam em memoria e persistidos localmente enquanto o pedido nao for enviado.
+          Revise seus itens, informe os dados de entrega e conclua o pedido.
         </Typography>
       </Box>
 
       <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25 }}>
-        {["Catalogo", "Carrinho", "Fechamento"].map((step, index) => (
+        {["Catálogo", "Carrinho", "Fechamento"].map((step, index) => (
           <Chip
             key={step}
             label={`${index + 1}. ${step}`}
@@ -225,7 +238,7 @@ export default function CartPage() {
                         <Typography color="text.secondary">
                           {formatCurrency(item.precoUnitario)} por unidade
                         </Typography>
-                        <Chip label="Producao artesanal" size="small" sx={{ width: "fit-content" }} />
+                        <Chip label="Produção artesanal" size="small" sx={{ width: "fit-content" }} />
                       </Box>
                       <Box sx={{ display: "flex", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
                         <TextField
@@ -252,7 +265,7 @@ export default function CartPage() {
             {suggestedProducts.length > 0 ? (
               <Card>
                 <CardContent sx={{ display: "grid", gap: 2 }}>
-                  <Typography variant="h6">Quem pediu isso tambem leva</Typography>
+                  <Typography variant="h6">Quem pediu isso também leva</Typography>
                   <Grid container spacing={2}>
                     {suggestedProducts.map((product) => (
                       <Grid key={product.id} size={{ xs: 12, md: 4 }}>
@@ -286,12 +299,12 @@ export default function CartPage() {
                             {product.nome}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            {product.tempoEntrega}
+                            {deliveryEstimateLabel}
                           </Typography>
                           <Typography sx={{ fontWeight: 800 }}>
                             {typeof product.precoUnitario === "number"
                               ? formatCurrency(product.precoUnitario)
-                              : "Preco sob consulta"}
+                              : "Preço sob consulta"}
                           </Typography>
                           <Button
                             variant="contained"
@@ -355,7 +368,7 @@ export default function CartPage() {
                     helperText={checkoutErrors.nomeRecebedor?.[0]}
                   />
                   <TextField
-                    label="Endereco"
+                    label="Endereço"
                     value={checkoutDraft.endereco}
                     onChange={(event) => updateCheckoutDraft({ endereco: event.target.value })}
                     error={Boolean(checkoutErrors.endereco)}
@@ -374,13 +387,13 @@ export default function CartPage() {
                       onChange={(event) => updateCheckoutDraft({ complemento: event.target.value })}
                     />
                     <TextField
-                      label="Referencia"
+                      label="Referência"
                       value={checkoutDraft.referencia}
                       onChange={(event) => updateCheckoutDraft({ referencia: event.target.value })}
                     />
                   </Box>
                   <TextField
-                    label="Melhor horario de entrega"
+                    label="Melhor horário de entrega"
                     type="time"
                     slotProps={{ inputLabel: { shrink: true } }}
                     value={checkoutDraft.horarioEntrega}
@@ -391,7 +404,7 @@ export default function CartPage() {
                 </Box>
               ) : (
                 <TextField
-                  label="Horario para retirada"
+                  label="Horário para retirada"
                   type="time"
                   slotProps={{ inputLabel: { shrink: true } }}
                   value={checkoutDraft.horarioRetirada}
@@ -402,7 +415,7 @@ export default function CartPage() {
               )}
 
               <TextField
-                label="Observacoes"
+                label="Observações"
                 multiline
                 minRows={2}
                 value={checkoutDraft.observacoes}
@@ -415,8 +428,8 @@ export default function CartPage() {
                 sx={{ borderRadius: 3 }}
               >
                 {isDelivery
-                  ? "Entrega estimada entre 30 e 45 minutos."
-                  : "Retirada agendada conforme o horario informado."}
+                  ? `Entrega estimada em ${deliveryEstimateLabel}.${deliveryMessage ? ` ${deliveryMessage}` : ""}`
+                  : "Retirada agendada conforme o horário informado."}
               </Alert>
               <Stack spacing={1.2}>
                 <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>

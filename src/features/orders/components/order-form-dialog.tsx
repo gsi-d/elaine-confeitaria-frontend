@@ -39,7 +39,6 @@ const defaultValues: OrderFormInput = {
   horarioRetirada: "",
   observacoes: "",
   desconto: 0,
-  status: "EM_ABERTO",
   itens: [{ produtoId: 1, quantidade: 1 }],
 };
 
@@ -78,11 +77,10 @@ export function OrderFormDialog({
             complemento: initialData.complemento ?? "",
             referencia: initialData.referencia ?? "",
             tipoEntrega: initialData.tipoEntrega,
-            horarioEntrega: initialData.horarioEntrega ?? "",
+            horarioEntrega: initialData.melhorHorarioEntrega ?? initialData.horarioEntrega ?? "",
             horarioRetirada: initialData.horarioRetirada ?? "",
             observacoes: initialData.observacoes ?? "",
             desconto: initialData.desconto,
-            status: initialData.status,
             itens: initialData.itens,
           }
         : defaultValues,
@@ -139,7 +137,7 @@ export function OrderFormDialog({
           {tipoEntrega === "ENTREGA" ? (
             <>
               <Alert severity="info" sx={{ borderRadius: "18px" }}>
-                Para entrega, informe recebedor, endereco e horario preferido.
+                Para entrega, informe recebedor, endereço e horário preferido.
               </Alert>
               <Controller
                 name="endereco"
@@ -147,7 +145,7 @@ export function OrderFormDialog({
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    label="Endereco"
+                    label="Endereço"
                     fullWidth
                     error={Boolean(errors.endereco)}
                     helperText={errors.endereco?.message}
@@ -169,7 +167,7 @@ export function OrderFormDialog({
                 <Controller
                   name="referencia"
                   control={control}
-                  render={({ field }) => <TextField {...field} label="Referencia" fullWidth />}
+                  render={({ field }) => <TextField {...field} label="Referência" fullWidth />}
                 />
               </Box>
               <Controller
@@ -179,7 +177,7 @@ export function OrderFormDialog({
                   <TextField
                     {...field}
                     type="time"
-                    label="Melhor horario de entrega"
+                    label="Melhor horário de entrega"
                     fullWidth
                     slotProps={{ inputLabel: { shrink: true } }}
                     error={Boolean(errors.horarioEntrega)}
@@ -196,7 +194,7 @@ export function OrderFormDialog({
                 <TextField
                   {...field}
                   type="time"
-                  label="Horario para retirada"
+                  label="Horário para retirada"
                   fullWidth
                   slotProps={{ inputLabel: { shrink: true } }}
                   error={Boolean(errors.horarioRetirada)}
@@ -210,7 +208,7 @@ export function OrderFormDialog({
             sx={{
               display: "grid",
               gap: 2,
-              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gridTemplateColumns: "1fr",
             }}
           >
             <Controller
@@ -227,19 +225,12 @@ export function OrderFormDialog({
                 />
               )}
             />
-            <Controller
-              name="status"
-              control={control}
-              render={({ field }) => (
-                <TextField {...field} label="Status" fullWidth helperText="Ex.: EM_ABERTO ou EM_PREPARO" />
-              )}
-            />
           </Box>
 
           <Controller
             name="observacoes"
             control={control}
-            render={({ field }) => <TextField {...field} label="Observacoes" fullWidth multiline minRows={2} />}
+            render={({ field }) => <TextField {...field} label="Observações" fullWidth multiline minRows={2} />}
           />
 
           {fields.map((field, index) => (

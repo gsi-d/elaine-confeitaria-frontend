@@ -29,6 +29,7 @@ import {
 } from "@/features/orders/hooks/use-orders";
 import { OrderFormValues } from "@/features/orders/schemas/order-schema";
 import { Order, OrderPayload } from "@/features/orders/types";
+import { formatDeliveryTypeLabel, formatStatusLabel } from "@/lib/utils/format";
 
 type OrdersColumnsContext = {
   onOpenItems: (order: Order) => void;
@@ -43,11 +44,16 @@ function createColumns({ onOpenItems }: OrdersColumnsContext): GridColDef<Order>
     width: 180,
     valueGetter: (_value, row) => row.nomeRecebedor || "-",
   },
-  { field: "endereco", headerName: "Endereco", flex: 1, minWidth: 220 },
-  { field: "tipoEntrega", headerName: "Entrega", width: 130 },
+  { field: "endereco", headerName: "Endereço", flex: 1, minWidth: 220 },
+  {
+    field: "tipoEntrega",
+    headerName: "Entrega",
+    width: 130,
+    valueFormatter: (value?: string) => formatDeliveryTypeLabel(value),
+  },
   {
     field: "agendamento",
-    headerName: "Horario",
+    headerName: "Horário",
     width: 150,
     valueGetter: (_value, row) => row.melhorHorarioEntrega || row.horarioEntrega || row.horarioRetirada || "-",
   },
@@ -61,7 +67,7 @@ function createColumns({ onOpenItems }: OrdersColumnsContext): GridColDef<Order>
     field: "status",
     headerName: "Status",
     width: 180,
-    renderCell: ({ value }) => <Chip label={String(value)} color="primary" variant="outlined" />,
+    renderCell: ({ value }) => <Chip label={formatStatusLabel(String(value))} color="primary" variant="outlined" />,
   },
   {
     field: "itens",
@@ -161,9 +167,7 @@ export default function OrdersPage() {
     <Box sx={{ display: "grid", gap: 3 }}>
       <Box>
         <Typography variant="h4">Pedidos</Typography>
-        <Typography color="text.secondary">
-          CRUD conectado aos endpoints `/pedidos` da API.
-        </Typography>
+        <Typography color="text.secondary">Consulte, cadastre e atualize os pedidos do sistema.</Typography>
       </Box>
 
       <Card>
@@ -198,7 +202,7 @@ export default function OrdersPage() {
               <CircularProgress />
             </Box>
           ) : isError ? (
-            <Alert severity="error">Nao foi possivel carregar os pedidos.</Alert>
+            <Alert severity="error">Não foi possível carregar os pedidos.</Alert>
           ) : (
             <DataGrid
               rows={orders}

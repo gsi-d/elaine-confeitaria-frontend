@@ -13,7 +13,6 @@ import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import NotificationsRoundedIcon from "@mui/icons-material/NotificationsRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
@@ -33,22 +32,25 @@ import {
   Menu,
   MenuItem,
   Stack,
-  TextField,
   Tooltip,
   Toolbar,
   Typography,
 } from "@mui/material";
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useCart } from "@/features/cart/hooks/use-cart";
+import { useDeliveryConfiguration } from "@/features/delivery-config/hooks/use-delivery-config";
+import { useGuestOrders } from "@/features/orders/hooks/use-guest-orders";
+import { formatDeliveryEstimate } from "@/lib/utils/format";
 
-const expandedDrawerWidth = 288;
-const collapsedDrawerWidth = 92;
+const expandedDrawerWidth = 304;
+const collapsedDrawerWidth = 84;
 
 const menuItems = [
   { label: "Home", href: "/home", icon: <HomeRoundedIcon /> },
-  { label: "Catalogo", href: "/catalogo", icon: <StorefrontRoundedIcon /> },
-  { label: "Operacao", href: "/operacao", icon: <FactCheckRoundedIcon /> },
+  { label: "Catálogo", href: "/catalogo", icon: <StorefrontRoundedIcon /> },
+  { label: "Operação", href: "/operacao", icon: <FactCheckRoundedIcon /> },
   { label: "Meus pedidos", href: "/meus-pedidos", icon: <ReceiptLongRoundedIcon /> },
   { label: "Pedidos", href: "/pedidos", icon: <ReceiptLongRoundedIcon /> },
   { label: "Carrinho", href: "/carrinho", icon: <ShoppingCartRoundedIcon /> },
@@ -56,8 +58,10 @@ const menuItems = [
 
 export function DashboardShell({ children }: PropsWithChildren) {
   const pathname = usePathname();
-  const { isAuthenticated, logout } = useAuth();
+  const { isAdmin, isAuthenticated, logout } = useAuth();
   const { items } = useCart();
+  const { hasGuestOrders } = useGuestOrders();
+  const { data: deliveryConfiguration } = useDeliveryConfiguration();
   const hasMounted = useSyncExternalStore(
     (onStoreChange) => {
       queueMicrotask(onStoreChange);
@@ -76,6 +80,39 @@ export function DashboardShell({ children }: PropsWithChildren) {
   );
 
   const currentDrawerWidth = desktopCollapsed ? collapsedDrawerWidth : expandedDrawerWidth;
+  const deliveryEstimateLabel = formatDeliveryEstimate(
+    deliveryConfiguration?.tempoMinimoMinutos,
+    deliveryConfiguration?.tempoMaximoMinutos,
+  );
+  const deliveryChipLabel =
+    deliveryEstimateLabel === "Consulte disponibilidade"
+      ? "Prazo sob consulta"
+      : `Entrega em ${deliveryEstimateLabel}`;
+  const isClientReady = hasMounted;
+  const visibleMenuItems = useMemo(() => {
+    if (!isClientReady) {
+      return menuItems.filter((item) =>
+        ["/home", "/catalogo"].includes(item.href),
+      );
+    }
+
+    if (isAuthenticated && isAdmin) {
+      return menuItems.filter((item) =>
+        ["/home", "/catalogo", "/operacao", "/pedidos", "/carrinho"].includes(item.href),
+      );
+    }
+
+    if (isAuthenticated || hasGuestOrders) {
+      return menuItems.filter((item) =>
+        ["/home", "/catalogo", "/meus-pedidos"].includes(item.href),
+      );
+    }
+
+    return menuItems.filter((item) =>
+      ["/home", "/catalogo"].includes(item.href),
+    );
+  }, [hasGuestOrders, isAdmin, isAuthenticated, isClientReady]);
+  const canSeeOperationCard = isClientReady && isAuthenticated && isAdmin;
 
   function toggleOperationVisibility() {
     setOperationVisible((current) => {
@@ -107,26 +144,19 @@ export function DashboardShell({ children }: PropsWithChildren) {
         background: "linear-gradient(180deg, #fffdfb 0%, #fff4f6 100%)",
       }}
     >
-      <Box sx={{ p: collapsed ? 2 : 3, pb: 2 }}>
+      <Box sx={{ pl: collapsed ? 1.25 : 1.75, pr: collapsed ? 1.5 : 2.25, pt: collapsed ? 2 : 3, pb: 2 }}>
         <Stack
           direction="row"
           spacing={1}
-          sx={{ alignItems: "center", justifyContent: "space-between" }}
+          sx={{ alignItems: "center", justifyContent: collapsed ? "center" : "space-between" }}
         >
-          <Box sx={{ overflow: "hidden" }}>
-            <Typography
-              variant="h6"
-              color="primary.main"
-              sx={{ whiteSpace: "nowrap", opacity: collapsed ? 0 : 1, transition: "opacity 0.2s ease" }}
-            >
-              Elaine Confeitaria
-            </Typography>
-            {!collapsed ? (
-              <Typography variant="body2" color="text.secondary">
-                Pedidos com cara de vitrine
-              </Typography>
-            ) : null}
-          </Box>
+          {!collapsed ? (
+            <Box sx={{ overflow: "visible", pr: 1 }}>
+              <BrandLogo iconSize={46} showWordmark />
+            </Box>
+          ) : (
+            <Box />
+          )}
           <IconButton
             onClick={() => setDesktopCollapsed((value) => !value)}
             sx={{ display: { xs: "none", md: "inline-flex" }, bgcolor: "rgba(216,111,157,0.08)" }}
@@ -134,7 +164,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
             {collapsed ? <ChevronRightRoundedIcon /> : <ChevronLeftRoundedIcon />}
           </IconButton>
         </Stack>
-        {!collapsed && operationVisible ? (
+        {!collapsed && canSeeOperationCard && operationVisible ? (
           <Box
             sx={{
               mt: 1.5,
@@ -150,7 +180,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
           >
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
               <Typography sx={{ fontSize: 11.5, fontWeight: 700, letterSpacing: 0.25, opacity: 0.9 }}>
-                Operacao
+                Operação
               </Typography>
               <IconButton
                 size="small"
@@ -172,7 +202,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
             </Box>
           </Box>
         ) : null}
-        {!collapsed && !operationVisible ? (
+        {!collapsed && canSeeOperationCard && !operationVisible ? (
           <Button
             variant="text"
             size="small"
@@ -180,13 +210,13 @@ export function DashboardShell({ children }: PropsWithChildren) {
             onClick={toggleOperationVisibility}
             sx={{ mt: 1, px: 0, justifyContent: "flex-start", textTransform: "none" }}
           >
-            Mostrar operacao
+            Mostrar operação
           </Button>
         ) : null}
       </Box>
       <Divider />
       <List sx={{ flex: 1, px: collapsed ? 1.25 : 2, py: 1.5 }}>
-        {menuItems.map((item) => (
+        {visibleMenuItems.map((item) => (
           <Tooltip key={item.href} title={collapsed ? item.label : ""} placement="right">
             <ListItemButton
               component={Link}
@@ -213,7 +243,7 @@ export function DashboardShell({ children }: PropsWithChildren) {
               >
                 {item.icon}
               </ListItemIcon>
-              {!collapsed ? <ListItemText primary={item.label} secondary="Acesso rapido" /> : null}
+              {!collapsed ? <ListItemText primary={item.label} secondary="Acesso rápido" /> : null}
             </ListItemButton>
           </Tooltip>
         ))}
@@ -267,33 +297,9 @@ export function DashboardShell({ children }: PropsWithChildren) {
           >
             <MenuRoundedIcon />
           </IconButton>
-          <Box sx={{ flexGrow: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Vitrine de pedidos
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Fluxo inspirado em delivery e marketplace, com leitura rapida do pedido.
-            </Typography>
-          </Box>
-          <TextField
-            size="small"
-            placeholder="Buscar produto, pedido ou cliente"
-            sx={{
-              display: { xs: "none", lg: "block" },
-              minWidth: 320,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 999,
-                bgcolor: "rgba(255,255,255,0.84)",
-              },
-            }}
-            slotProps={{
-              input: {
-                startAdornment: <SearchRoundedIcon fontSize="small" style={{ marginRight: 8, opacity: 0.7 }} />,
-              },
-            }}
-          />
+          <Box sx={{ flexGrow: 1 }} />
           <Chip
-            label="Entrega ate 45 min"
+            label={deliveryChipLabel}
             color="secondary"
             variant="outlined"
             sx={{ display: { xs: "none", sm: "inline-flex" } }}
@@ -350,6 +356,11 @@ export function DashboardShell({ children }: PropsWithChildren) {
         <MenuItem component={Link} href="/meus-pedidos" onClick={handleCloseProfileMenu}>
           Meus pedidos
         </MenuItem>
+        {isAdmin ? (
+          <MenuItem component={Link} href="/configuracoes" onClick={handleCloseProfileMenu}>
+            Configurações
+          </MenuItem>
+        ) : null}
         <MenuItem onClick={handleLogout}>Sair</MenuItem>
       </Menu>
       <Box component="nav" sx={{ width: { md: currentDrawerWidth }, flexShrink: { md: 0 } }}>

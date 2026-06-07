@@ -16,8 +16,7 @@ export const orderSchema = z
     horarioEntrega: z.string().trim().optional(),
     horarioRetirada: z.string().trim().optional(),
     observacoes: z.string().trim().optional(),
-    desconto: z.coerce.number().min(0, "Desconto nao pode ser negativo."),
-    status: z.string().optional(),
+    desconto: z.coerce.number().min(0, "Desconto não pode ser negativo."),
     itens: z.array(orderItemSchema).min(1, "Informe pelo menos um item."),
   })
   .superRefine((value, context) => {
@@ -34,7 +33,7 @@ export const orderSchema = z
         context.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["endereco"],
-          message: "Informe o endereco para entrega.",
+          message: "Informe o endereço para entrega.",
         });
       }
 
@@ -42,7 +41,7 @@ export const orderSchema = z
         context.addIssue({
           code: z.ZodIssueCode.custom,
           path: ["horarioEntrega"],
-          message: "Informe o melhor horario de entrega.",
+          message: "Informe o melhor horário de entrega.",
         });
       }
     }
@@ -51,7 +50,7 @@ export const orderSchema = z
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["horarioRetirada"],
-        message: "Informe o horario de retirada.",
+        message: "Informe o horário de retirada.",
       });
     }
   });

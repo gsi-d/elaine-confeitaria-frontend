@@ -1,8 +1,9 @@
 "use client";
 
 import { Button, Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { useDeliveryConfiguration } from "@/features/delivery-config/hooks/use-delivery-config";
 import { CatalogProduct } from "@/features/catalog/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatDeliveryEstimate } from "@/lib/utils/format";
 
 type ProductCardProps = {
   product: CatalogProduct;
@@ -11,6 +12,14 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product, onOpenDetails, onAddToCart }: ProductCardProps) {
+  const { data: deliveryConfiguration } = useDeliveryConfiguration();
+  const deliveryEstimateLabel = formatDeliveryEstimate(
+    deliveryConfiguration?.tempoMinimoMinutos,
+    deliveryConfiguration?.tempoMaximoMinutos,
+  );
+  const displayLeadTime =
+    deliveryEstimateLabel !== "Consulte disponibilidade" ? deliveryEstimateLabel : product.tempoEntrega;
+
   return (
     <Card sx={{ height: "100%" }}>
       <CardContent sx={{ display: "grid", gap: 2.25, height: "100%" }}>
@@ -70,7 +79,7 @@ export function ProductCard({ product, onOpenDetails, onAddToCart }: ProductCard
                 <Typography variant="h6" sx={{ lineHeight: 1.15 }}>
                   {product.nome}
                 </Typography>
-                <Typography color="text.secondary">{product.tamanho ?? product.tempoEntrega}</Typography>
+                <Typography color="text.secondary">{product.tamanho ?? displayLeadTime}</Typography>
               </Box>
             </Box>
           </Box>
@@ -79,11 +88,11 @@ export function ProductCard({ product, onOpenDetails, onAddToCart }: ProductCard
             <Typography variant="h5">
               {typeof product.precoUnitario === "number"
                 ? formatCurrency(product.precoUnitario)
-                : "Preco sob consulta"}
+                : "Preço sob consulta"}
             </Typography>
-            {product.tempoEntrega !== "Consulte disponibilidade" ? (
+            {displayLeadTime !== "Consulte disponibilidade" ? (
               <Typography variant="body2" color="text.secondary">
-                Entrega estimada: {product.tempoEntrega}
+                Entrega estimada: {displayLeadTime}
               </Typography>
             ) : null}
           </Box>
@@ -93,7 +102,7 @@ export function ProductCard({ product, onOpenDetails, onAddToCart }: ProductCard
           disabled={typeof product.precoUnitario !== "number"}
           onClick={() => onAddToCart(product)}
         >
-          {typeof product.precoUnitario === "number" ? "Adicionar ao carrinho" : "Indisponivel no carrinho"}
+          {typeof product.precoUnitario === "number" ? "Adicionar ao carrinho" : "Indisponível no carrinho"}
         </Button>
       </CardContent>
     </Card>

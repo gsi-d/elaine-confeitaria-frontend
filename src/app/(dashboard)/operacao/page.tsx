@@ -23,6 +23,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { useProducts } from "@/features/catalog/hooks/use-products";
 import { useOrders, useUpdateOrderStatus } from "@/features/orders/hooks/use-orders";
 import { Order } from "@/features/orders/types";
+import { formatDeliveryTypeLabel, formatStatusLabel } from "@/lib/utils/format";
 
 const statusOptions = [
   "EM_ABERTO",
@@ -50,7 +51,7 @@ function parseTimeToMinutes(value?: string): number | null {
 }
 
 function getScheduleLabel(order: Order): string {
-  return order.melhorHorarioEntrega ?? order.horarioEntrega ?? order.horarioRetirada ?? "Sem horario";
+  return order.melhorHorarioEntrega ?? order.horarioEntrega ?? order.horarioRetirada ?? "Sem horário";
 }
 
 function getUrgency(order: Order, nowInMinutes: number) {
@@ -59,7 +60,7 @@ function getUrgency(order: Order, nowInMinutes: number) {
   if (scheduled === null) {
     return {
       key: "sem_horario",
-      label: "Sem horario",
+      label: "Sem horário",
       color: "default" as const,
       icon: <AccessTimeRoundedIcon fontSize="small" />,
     };
@@ -139,7 +140,7 @@ export default function OperationsPage() {
 
       enqueueSnackbar("Status do pedido atualizado.", { variant: "success" });
     } catch {
-      enqueueSnackbar("Nao foi possivel atualizar o status do pedido.", { variant: "error" });
+      enqueueSnackbar("Não foi possível atualizar o status do pedido.", { variant: "error" });
     }
   }
 
@@ -147,7 +148,7 @@ export default function OperationsPage() {
     return (
       <Box sx={{ display: "grid", gap: 3 }}>
         <Box>
-          <Typography variant="h4">Operacao</Typography>
+          <Typography variant="h4">Acompanhamento</Typography>
           <Typography color="text.secondary">Carregando acompanhamento...</Typography>
         </Box>
       </Box>
@@ -162,7 +163,7 @@ export default function OperationsPage() {
           <Chip icon={<LocalShippingRoundedIcon />} label={`${activeOrders.length} pedidos em aberto`} />
         </Stack>
         <Typography color="text.secondary">
-          Painel operacional com todos os pedidos nao finalizados e sinalizacao de urgencia por horario.
+          Visualize os pedidos em andamento e priorize os mais urgentes.
         </Typography>
       </Box>
 
@@ -171,7 +172,7 @@ export default function OperationsPage() {
           <CircularProgress />
         </Box>
       ) : isError ? (
-        <Alert severity="error">Nao foi possivel carregar os pedidos da operacao.</Alert>
+        <Alert severity="error">Não foi possível carregar os pedidos em andamento.</Alert>
       ) : activeOrders.length === 0 ? (
         <Alert severity="success">Nenhum pedido pendente no momento.</Alert>
       ) : (
@@ -186,7 +187,7 @@ export default function OperationsPage() {
                     <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", flexWrap: "wrap" }}>
                       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                         <Chip label={`Pedido #${order.id}`} />
-                        <Chip label={order.tipoEntrega} variant="outlined" />
+                        <Chip label={formatDeliveryTypeLabel(order.tipoEntrega)} variant="outlined" />
                       </Stack>
                       <Chip
                         icon={urgency.icon}
@@ -197,16 +198,16 @@ export default function OperationsPage() {
                     </Stack>
 
                     <Box sx={{ display: "grid", gap: 0.5 }}>
-                      <Typography variant="h6">{order.nomeRecebedor || "Cliente sem recebedor informado"}</Typography>
+                      <Typography variant="h6">{order.nomeRecebedor || "Recebedor não informado"}</Typography>
                       <Typography color="text.secondary">
-                        {order.endereco || "Endereco nao informado"}
+                        {order.endereco || "Endereço não informado"}
                       </Typography>
                     </Box>
 
                     <Grid container spacing={2}>
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="body2" color="text.secondary">
-                          Horario
+                          Horário
                         </Typography>
                         <Typography>{getScheduleLabel(order)}</Typography>
                       </Grid>
@@ -214,7 +215,7 @@ export default function OperationsPage() {
                         <Typography variant="body2" color="text.secondary">
                           Status atual
                         </Typography>
-                        <Typography>{order.status}</Typography>
+                        <Typography>{formatStatusLabel(order.status)}</Typography>
                       </Grid>
                     </Grid>
 
@@ -253,7 +254,7 @@ export default function OperationsPage() {
                       >
                         {statusOptions.map((status) => (
                           <MenuItem key={status} value={status}>
-                            {status}
+                            {formatStatusLabel(status)}
                           </MenuItem>
                         ))}
                       </TextField>

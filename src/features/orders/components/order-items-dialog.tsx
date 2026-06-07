@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import { CatalogProduct } from "@/features/catalog/types";
 import { Order } from "@/features/orders/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatDeliveryTypeLabel, formatStatusLabel } from "@/lib/utils/format";
 
 type OrderItemsDialogProps = {
   order: Order | null;
@@ -33,8 +33,8 @@ export function OrderItemsDialog({ order, products, onClose }: OrderItemsDialogP
           <DialogTitle>{`Itens do pedido #${order.id}`}</DialogTitle>
           <DialogContent sx={{ display: "grid", gap: 2.5, pb: 1 }}>
             <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-              <Chip label={order.status} color="primary" variant="outlined" />
-              <Chip label={order.tipoEntrega} variant="outlined" />
+              <Chip label={formatStatusLabel(order.status)} color="primary" variant="outlined" />
+              <Chip label={formatDeliveryTypeLabel(order.tipoEntrega)} variant="outlined" />
               <Chip label={`${order.itens.length} item(ns)`} />
             </Stack>
 
@@ -87,11 +87,11 @@ export function OrderItemsDialog({ order, products, onClose }: OrderItemsDialogP
                       </Stack>
                       <Typography variant="h6">{product?.nome ?? `Produto #${item.produtoId}`}</Typography>
                       <Typography color="text.secondary">
-                        {product?.descricao ?? "Detalhes do produto indisponiveis no catalogo atual."}
+                        {product?.descricao ?? "Detalhes do produto indisponíveis no catálogo atual."}
                       </Typography>
                       <Stack direction="row" spacing={2} sx={{ flexWrap: "wrap" }}>
                         <Typography variant="body2" color="text.secondary">
-                          {product?.tamanho ?? "Tamanho nao informado"}
+                          {product?.tamanho ?? "Tamanho não informado"}
                         </Typography>
                         {typeof product?.precoUnitario === "number" ? (
                           <Typography variant="body2" sx={{ fontWeight: 700 }}>

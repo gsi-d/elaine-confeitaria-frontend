@@ -4,16 +4,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   CircularProgress,
   Paper,
+  Stack,
   TextField,
   Typography,
 } from "@mui/material";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { LoginFormValues, loginSchema } from "@/features/auth/schemas/login-schema";
 
@@ -27,8 +28,8 @@ export function LoginForm() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "cliente@elaine.com",
-      senha: "123456",
+      email: "",
+      senha: "",
     },
   });
 
@@ -38,7 +39,7 @@ export function LoginForm() {
     try {
       await login(values);
     } catch {
-      setErrorMessage("Nao foi possivel autenticar. Verifique as credenciais e a API.");
+      setErrorMessage("Não foi possível entrar. Verifique seu e-mail e senha.");
     }
   }
 
@@ -46,12 +47,10 @@ export function LoginForm() {
     <Paper elevation={6} sx={{ p: 5, width: "100%", maxWidth: 460 }}>
       <Box sx={{ display: "grid", gap: 3 }}>
         <Box sx={{ display: "grid", gap: 1, justifyItems: "center" }}>
-          <Avatar sx={{ bgcolor: "primary.main" }}>
-            <LockOutlinedIcon />
-          </Avatar>
+          <BrandLogo iconSize={72} stacked />
           <Typography variant="h4">Login</Typography>
           <Typography color="text.secondary" sx={{ textAlign: "center" }}>
-            Acesso ao painel administrativo da Elaine Confeitaria
+            Entre para acompanhar seus pedidos e finalizar compras.
           </Typography>
         </Box>
 
@@ -87,9 +86,14 @@ export function LoginForm() {
                 />
               )}
             />
-            <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
-              {isSubmitting ? <CircularProgress size={20} color="inherit" /> : "Entrar"}
-            </Button>
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <Button type="submit" variant="contained" size="large" disabled={isSubmitting}>
+                {isSubmitting ? <CircularProgress size={20} color="inherit" /> : "Entrar"}
+              </Button>
+              <Button href="/cadastro" variant="outlined" size="large">
+                Criar conta
+              </Button>
+            </Stack>
           </Box>
         </Box>
       </Box>

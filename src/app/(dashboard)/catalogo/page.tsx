@@ -26,8 +26,8 @@ import { CatalogProduct } from "@/features/catalog/types";
 
 const availabilityOptions = [
   { label: "Todos", value: "all" },
-  { label: "Com preco", value: "priced" },
-  { label: "Sem preco", value: "unpriced" },
+  { label: "Com preço", value: "priced" },
+  { label: "Sem preço", value: "unpriced" },
 ] as const;
 
 export default function CatalogPage() {
@@ -94,7 +94,7 @@ export default function CatalogPage() {
     return (
       <Box sx={{ display: "grid", gap: 3 }}>
         <Box>
-          <Typography variant="h4">Catalogo</Typography>
+          <Typography variant="h4">Catálogo</Typography>
           <Typography color="text.secondary">Carregando produtos...</Typography>
         </Box>
       </Box>
@@ -105,8 +105,8 @@ export default function CatalogPage() {
     <Box sx={{ display: "grid", gap: 3 }}>
       <Box>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5} sx={{ alignItems: { md: "center" } }}>
-          <Typography variant="h4">Catalogo</Typography>
-          <Chip icon={<Inventory2RoundedIcon />} label={`${filteredProducts.length} produtos visiveis`} />
+          <Typography variant="h4">Catálogo</Typography>
+          <Chip icon={<Inventory2RoundedIcon />} label={`${filteredProducts.length} produtos visíveis`} />
         </Stack>
         <Typography color="text.secondary">
           Explore os produtos da confeitaria com filtros por texto e propriedades do item.
@@ -132,7 +132,7 @@ export default function CatalogPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 label="Buscar por texto"
-                placeholder="Nome, descricao, categoria ou tamanho"
+                placeholder="Nome, descrição, categoria ou tamanho"
                 slotProps={{
                   input: {
                     startAdornment: (
@@ -188,9 +188,9 @@ export default function CatalogPage() {
           <CircularProgress />
         </Box>
       ) : isError ? (
-        <Alert severity="error">Nao foi possivel carregar os produtos da API.</Alert>
+        <Alert severity="error">Não foi possível carregar os produtos.</Alert>
       ) : products.length === 0 ? (
-        <Alert severity="info">Nenhum produto foi retornado pelo backend.</Alert>
+        <Alert severity="info">Nenhum produto encontrado.</Alert>
       ) : filteredProducts.length === 0 ? (
         <Alert severity="info">Nenhum produto corresponde aos filtros aplicados.</Alert>
       ) : (

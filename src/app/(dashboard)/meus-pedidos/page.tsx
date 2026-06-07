@@ -16,13 +16,16 @@ import {
   Typography,
 } from "@mui/material";
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useProducts } from "@/features/catalog/hooks/use-products";
 import { OrderItemsDialog } from "@/features/orders/components/order-items-dialog";
+import { useGuestOrders } from "@/features/orders/hooks/use-guest-orders";
 import { useOrders } from "@/features/orders/hooks/use-orders";
 import { Order } from "@/features/orders/types";
+import { formatDeliveryTypeLabel, formatStatusLabel } from "@/lib/utils/format";
 
 function getScheduleLabel(order: Order): string {
-  return order.horarioEntrega ?? order.horarioRetirada ?? "Nao informado";
+  return order.melhorHorarioEntrega ?? order.horarioEntrega ?? order.horarioRetirada ?? "Não informado";
 }
 
 function getRecipientLabel(order: Order): string {
@@ -38,12 +41,14 @@ function getRecipientLabel(order: Order): string {
 }
 
 export default function MyOrdersPage() {
+  const { isAuthenticated } = useAuth();
   const search = useSyncExternalStore(
     () => () => {},
     () => window.location.search,
     () => "",
   );
-  const { data = [], isLoading, isError } = useOrders();
+  const { data = [], isLoading, isError } = useOrders(isAuthenticated);
+  const { orders: guestOrders } = useGuestOrders();
   const { data: products = [] } = useProducts();
   const currentOrderId = useMemo(() => {
     const params = new URLSearchParams(search);
@@ -56,9 +61,11 @@ export default function MyOrdersPage() {
     [products],
   );
   const orders = useMemo(
-    () => [...data].sort((left, right) => right.id - left.id),
-    [data],
+    () => [...(isAuthenticated ? data : guestOrders)].sort((left, right) => right.id - left.id),
+    [data, guestOrders, isAuthenticated],
   );
+  const shouldShowLoading = isAuthenticated && isLoading;
+  const shouldShowError = isAuthenticated && isError;
 
   return (
     <Box sx={{ display: "grid", gap: 3 }}>
@@ -68,18 +75,18 @@ export default function MyOrdersPage() {
           <Chip icon={<ReceiptLongRoundedIcon />} label={`${orders.length} pedidos encontrados`} />
         </Stack>
         <Typography color="text.secondary">
-          Acompanhe o pedido atual e consulte tambem os pedidos finalizados anteriormente.
+          Acompanhe seu pedido atual e consulte também os pedidos anteriores.
         </Typography>
       </Box>
 
-      {isLoading ? (
+      {shouldShowLoading ? (
         <Box sx={{ minHeight: 260, display: "grid", placeItems: "center" }}>
           <CircularProgress />
         </Box>
-      ) : isError ? (
-        <Alert severity="error">Nao foi possivel carregar seus pedidos.</Alert>
+      ) : shouldShowError ? (
+        <Alert severity="error">Não foi possível carregar seus pedidos.</Alert>
       ) : orders.length === 0 ? (
-        <Alert severity="info">Voce ainda nao possui pedidos cadastrados.</Alert>
+        <Alert severity="info">Você ainda não possui pedidos cadastrados.</Alert>
       ) : (
         <Grid container spacing={3}>
           {orders.map((order) => {
@@ -99,16 +106,16 @@ export default function MyOrdersPage() {
                     <Stack direction="row" spacing={1} sx={{ justifyContent: "space-between", flexWrap: "wrap" }}>
                       <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                         <Chip label={`Pedido #${order.id}`} color={isCurrent ? "primary" : "default"} />
-                        <Chip label={order.tipoEntrega} variant="outlined" />
+                        <Chip label={formatDeliveryTypeLabel(order.tipoEntrega)} variant="outlined" />
                         {isCurrent ? <Chip label="Pedido atual" color="secondary" /> : null}
                       </Stack>
-                      <Chip label={order.status} color="primary" variant="outlined" />
+                      <Chip label={formatStatusLabel(order.status)} color="primary" variant="outlined" />
                     </Stack>
 
                     <Box sx={{ display: "grid", gap: 0.75 }}>
                       <Typography variant="h6">{getRecipientLabel(order)}</Typography>
                       <Typography color="text.secondary">
-                        {order.endereco ?? "Endereco nao informado"}
+                        {order.endereco ?? "Endereço não informado"}
                       </Typography>
                     </Box>
 
@@ -135,9 +142,9 @@ export default function MyOrdersPage() {
                       </Grid>
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <Typography variant="body2" color="text.secondary">
-                          Observacoes
+                          Observações
                         </Typography>
-                        <Typography>{order.observacoes || "Sem observacoes"}</Typography>
+                        <Typography>{order.observacoes || "Sem observações"}</Typography>
                       </Grid>
                     </Grid>
 

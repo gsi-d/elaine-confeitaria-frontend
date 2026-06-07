@@ -142,7 +142,7 @@ function inferCategory(product: ApiProductRecord): string {
     toStringValue(product.categoria) ??
     toStringValue(product.category) ??
     toStringValue(product.tipo) ??
-    "Catalogo";
+    "Catálogo";
 
   return rawCategory
     .toLowerCase()

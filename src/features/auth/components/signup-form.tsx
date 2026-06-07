@@ -45,10 +45,10 @@ export function SignupForm() {
 
     try {
       await authService.register(values);
-      setSuccessMessage("Conta criada com sucesso. Voce ja pode entrar.");
+      setSuccessMessage("Conta criada com sucesso. Você já pode entrar.");
       router.push("/login");
     } catch {
-      setErrorMessage("Nao foi possivel criar a conta. Verifique os dados e a API.");
+      setErrorMessage("Não foi possível criar a conta. Verifique os dados informados.");
     }
   }
 
@@ -104,7 +104,7 @@ export function SignupForm() {
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Endereco"
+                  label="Endereço"
                   error={Boolean(errors.endereco)}
                   helperText={errors.endereco?.message}
                   fullWidth
@@ -159,7 +159,7 @@ export function SignupForm() {
                 {isSubmitting ? <CircularProgress size={20} color="inherit" /> : "Criar conta"}
               </Button>
               <Button href="/login" variant="outlined" size="large">
-                Ja tenho conta
+                Já tenho conta
               </Button>
             </Stack>
           </Box>

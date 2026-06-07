@@ -1,8 +1,9 @@
 "use client";
 
 import { Button, Box, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from "@mui/material";
+import { useDeliveryConfiguration } from "@/features/delivery-config/hooks/use-delivery-config";
 import { CatalogProduct } from "@/features/catalog/types";
-import { formatCurrency } from "@/lib/utils/format";
+import { formatCurrency, formatDeliveryEstimate } from "@/lib/utils/format";
 
 type ProductDetailsDialogProps = {
   product: CatalogProduct | null;
@@ -15,6 +16,16 @@ export function ProductDetailsDialog({
   onClose,
   onAddToCart,
 }: ProductDetailsDialogProps) {
+  const { data: deliveryConfiguration } = useDeliveryConfiguration();
+  const deliveryEstimateLabel = formatDeliveryEstimate(
+    deliveryConfiguration?.tempoMinimoMinutos,
+    deliveryConfiguration?.tempoMaximoMinutos,
+  );
+  const displayLeadTime =
+    deliveryEstimateLabel !== "Consulte disponibilidade"
+      ? deliveryEstimateLabel
+      : (product?.tempoEntrega ?? "Consulte disponibilidade");
+
   return (
     <Dialog open={Boolean(product)} onClose={onClose} fullWidth maxWidth="sm">
       {product ? (
@@ -58,11 +69,11 @@ export function ProductDetailsDialog({
               <Typography variant="h5">
                 {typeof product.precoUnitario === "number"
                   ? formatCurrency(product.precoUnitario)
-                  : "Preco sob consulta"}
+                  : "Preço sob consulta"}
               </Typography>
-              {product.tempoEntrega !== "Consulte disponibilidade" ? (
+              {displayLeadTime !== "Consulte disponibilidade" ? (
                 <Typography variant="body2" color="text.secondary">
-                  Entrega estimada: {product.tempoEntrega}
+                  Entrega estimada: {displayLeadTime}
                 </Typography>
               ) : null}
             </Box>
@@ -79,7 +90,7 @@ export function ProductDetailsDialog({
             >
               {typeof product.precoUnitario === "number"
                 ? "Adicionar ao carrinho"
-                : "Indisponivel no carrinho"}
+                : "Indisponível no carrinho"}
             </Button>
           </DialogActions>
         </>
