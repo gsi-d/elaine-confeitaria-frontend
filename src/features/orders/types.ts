@@ -9,11 +9,10 @@ export type OrderPayload = {
   complemento?: string;
   referencia?: string;
   tipoEntrega: "ENTREGA" | "RETIRADA";
-  horarioEntrega?: string;
-  horarioRetirada?: string;
+  melhorHorarioEntrega?: string;
   observacoes?: string;
+  anexo: unknown[];
   desconto: number;
-  status?: string;
   itens: OrderItemPayload[];
 };
 
@@ -24,6 +23,7 @@ export type Order = {
   complemento?: string;
   referencia?: string;
   tipoEntrega: "ENTREGA" | "RETIRADA";
+  melhorHorarioEntrega?: string;
   horarioEntrega?: string;
   horarioRetirada?: string;
   observacoes?: string;

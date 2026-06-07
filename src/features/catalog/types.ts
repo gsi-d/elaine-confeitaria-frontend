@@ -14,6 +14,7 @@ export type CatalogProduct = {
 };
 
 type ApiProductRecord = Record<string, unknown>;
+type ApiAttachmentRecord = Record<string, unknown>;
 
 function toNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -31,6 +32,91 @@ function toNumber(value: unknown): number | null {
 
 function toStringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+function inferMimeType(attachment: ApiAttachmentRecord): string {
+  const explicitMime =
+    toStringValue(attachment.contentType) ??
+    toStringValue(attachment.mimeType) ??
+    toStringValue(attachment.tipoConteudo) ??
+    toStringValue(attachment.mediaType);
+
+  if (explicitMime) {
+    return explicitMime;
+  }
+
+  const fileName =
+    toStringValue(attachment.nomeArquivo) ??
+    toStringValue(attachment.fileName) ??
+    toStringValue(attachment.nome);
+
+  if (!fileName) {
+    return "image/png";
+  }
+
+  const extension = fileName.split(".").pop()?.toLowerCase();
+
+  switch (extension) {
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "gif":
+      return "image/gif";
+    case "webp":
+      return "image/webp";
+    case "svg":
+      return "image/svg+xml";
+    default:
+      return "image/png";
+  }
+}
+
+function toBase64DataUrl(value: string, mimeType: string): string {
+  if (value.startsWith("data:")) {
+    return value;
+  }
+
+  return `data:${mimeType};base64,${value}`;
+}
+
+function extractImageUrlFromAttachment(attachment: unknown): string | undefined {
+  if (!attachment) {
+    return undefined;
+  }
+
+  if (typeof attachment === "string") {
+    return toBase64DataUrl(attachment.trim(), "image/png");
+  }
+
+  if (Array.isArray(attachment)) {
+    for (const item of attachment) {
+      const resolved = extractImageUrlFromAttachment(item);
+      if (resolved) {
+        return resolved;
+      }
+    }
+
+    return undefined;
+  }
+
+  if (typeof attachment !== "object") {
+    return undefined;
+  }
+
+  const record = attachment as ApiAttachmentRecord;
+  const rawBase64 =
+    toStringValue(record.base64) ??
+    toStringValue(record.bytes) ??
+    toStringValue(record.conteudo) ??
+    toStringValue(record.conteudoBase64) ??
+    toStringValue(record.arquivo) ??
+    toStringValue(record.data);
+
+  if (!rawBase64) {
+    return undefined;
+  }
+
+  return toBase64DataUrl(rawBase64, inferMimeType(record));
 }
 
 function slugify(value: string): string {
@@ -129,7 +215,12 @@ export function mapApiProduct(product: unknown, index: number): CatalogProduct |
     tempoEntrega: inferLeadTime(record),
     cor: fallbackGradients[index % fallbackGradients.length],
     tamanho: toStringValue(record.tamanho) ?? toStringValue(record.size) ?? undefined,
-    imagemUrl: toStringValue(record.imagemUrl) ?? toStringValue(record.imageUrl) ?? undefined,
+    imagemUrl:
+      extractImageUrlFromAttachment(record.anexo) ??
+      extractImageUrlFromAttachment(record.anexos) ??
+      toStringValue(record.imagemUrl) ??
+      toStringValue(record.imageUrl) ??
+      undefined,
     imagemAlt: toStringValue(record.imagemAlt) ?? toStringValue(record.imageAlt) ?? nome,
   };
 }

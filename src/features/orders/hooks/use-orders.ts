@@ -36,6 +36,18 @@ export function useUpdateOrder() {
   });
 }
 
+export function useUpdateOrderStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      ordersService.updateStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ORDERS_QUERY_KEY });
+    },
+  });
+}
+
 export function useDeleteOrder() {
   const queryClient = useQueryClient();
 

@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { AUTH_TOKEN_KEY } from "@/lib/auth/constants";
 
-const protectedRoutes = ["/home", "/pedidos", "/carrinho"];
-
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get(AUTH_TOKEN_KEY)?.value;
-  const isProtectedRoute = protectedRoutes.some((route) =>
-    pathname.startsWith(route),
-  );
 
-  if (!token && isProtectedRoute) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  if (token && pathname === "/login") {
+  if (token && (pathname === "/login" || pathname === "/cadastro")) {
     return NextResponse.redirect(new URL("/home", request.url));
   }
 
@@ -22,5 +13,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/login", "/home/:path*", "/pedidos/:path*", "/carrinho/:path*"],
+  matcher: [
+    "/",
+    "/login",
+    "/cadastro",
+    "/home/:path*",
+    "/catalogo/:path*",
+    "/pedidos/:path*",
+    "/meus-pedidos/:path*",
+    "/carrinho/:path*",
+  ],
 };

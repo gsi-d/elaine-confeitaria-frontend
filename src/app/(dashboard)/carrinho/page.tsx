@@ -20,10 +20,12 @@ import {
   Typography,
 } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
-import { useSyncExternalStore } from "react";
-import { catalogProducts } from "@/features/catalog/data/products";
+import { useMemo, useSyncExternalStore } from "react";
 import { useCart } from "@/features/cart/hooks/use-cart";
+import { useProducts } from "@/features/catalog/hooks/use-products";
+import { CatalogProduct } from "@/features/catalog/types";
 import { useCreateOrder } from "@/features/orders/hooks/use-orders";
+import { useOrders } from "@/features/orders/hooks/use-orders";
 import { orderSchema } from "@/features/orders/schemas/order-schema";
 import { formatCurrency } from "@/lib/utils/format";
 
@@ -35,6 +37,7 @@ export default function CartPage() {
   );
   const router = useRouter();
   const {
+    addItem,
     items,
     total,
     clearCart,
@@ -44,7 +47,61 @@ export default function CartPage() {
     updateCheckoutDraft,
     resetCheckoutDraft,
   } = useCart();
+  const { data: products = [] } = useProducts();
+  const { data: orders = [] } = useOrders();
   const createOrder = useCreateOrder();
+  const suggestedProducts = useMemo<CatalogProduct[]>(() => {
+    const productsByProdutoId = new Map(products.map((product) => [product.produtoId, product] as const));
+    const cartProdutoIds = new Set(items.map((item) => item.produtoId));
+    const cooccurrenceScores = new Map<number, number>();
+    const overallScores = new Map<number, number>();
+
+    for (const order of orders) {
+      const uniqueProdutoIds = Array.from(new Set(order.itens.map((item) => item.produtoId)));
+      const overlapCount = uniqueProdutoIds.filter((produtoId) => cartProdutoIds.has(produtoId)).length;
+
+      for (const produtoId of uniqueProdutoIds) {
+        overallScores.set(produtoId, (overallScores.get(produtoId) ?? 0) + 1);
+      }
+
+      if (overlapCount === 0) {
+        continue;
+      }
+
+      for (const produtoId of uniqueProdutoIds) {
+        if (cartProdutoIds.has(produtoId)) {
+          continue;
+        }
+
+        cooccurrenceScores.set(produtoId, (cooccurrenceScores.get(produtoId) ?? 0) + overlapCount);
+      }
+    }
+
+    const rankedIds = Array.from(
+      new Set([
+        ...cooccurrenceScores.keys(),
+        ...overallScores.keys(),
+      ]),
+    ).sort((left, right) => {
+      const scoreDiff = (cooccurrenceScores.get(right) ?? 0) - (cooccurrenceScores.get(left) ?? 0);
+      if (scoreDiff !== 0) {
+        return scoreDiff;
+      }
+
+      return (overallScores.get(right) ?? 0) - (overallScores.get(left) ?? 0);
+    });
+
+    return rankedIds
+      .map((produtoId) => productsByProdutoId.get(produtoId))
+      .filter((product): product is CatalogProduct => {
+        if (!product || typeof product.precoUnitario !== "number") {
+          return false;
+        }
+
+        return !items.some((item) => item.produtoId === product.produtoId);
+      })
+      .slice(0, 3);
+  }, [items, orders, products]);
 
   if (!hasMounted) {
     return (
@@ -61,16 +118,11 @@ export default function CartPage() {
   const deliveryFee = items.length > 0 && checkoutDraft.tipoEntrega === "ENTREGA" ? 8 : 0;
   const discount = subtotal >= 120 ? 12 : 0;
   const finalTotal = subtotal + deliveryFee - discount;
-  const suggestedProducts = catalogProducts.filter(
-    (product) =>
-      typeof product.precoUnitario === "number" && !items.some((item) => item.id === product.id),
-  ).slice(0, 3);
   const isDelivery = checkoutDraft.tipoEntrega === "ENTREGA";
 
   const validationResult = orderSchema.safeParse({
     ...checkoutDraft,
     desconto: discount,
-    status: "EM_ABERTO",
     itens: items.map((item) => ({
       produtoId: item.produtoId,
       quantidade: item.quantidade,
@@ -82,7 +134,6 @@ export default function CartPage() {
     const result = orderSchema.safeParse({
       ...checkoutDraft,
       desconto: discount,
-      status: "EM_ABERTO",
       itens: items.map((item) => ({
         produtoId: item.produtoId,
         quantidade: item.quantidade,
@@ -96,7 +147,18 @@ export default function CartPage() {
       return;
     }
 
-    const createdOrder = await createOrder.mutateAsync(result.data);
+    const createdOrder = await createOrder.mutateAsync({
+      nomeRecebedor: result.data.nomeRecebedor,
+      endereco: result.data.endereco,
+      complemento: result.data.complemento,
+      referencia: result.data.referencia,
+      tipoEntrega: result.data.tipoEntrega,
+      melhorHorarioEntrega: result.data.horarioEntrega || result.data.horarioRetirada || undefined,
+      observacoes: result.data.observacoes,
+      anexo: [],
+      desconto: result.data.desconto,
+      itens: result.data.itens,
+    });
     clearCart();
     resetCheckoutDraft();
     enqueueSnackbar("Pedido enviado com sucesso.", { variant: "success" });
@@ -196,16 +258,30 @@ export default function CartPage() {
                       <Grid key={product.id} size={{ xs: 12, md: 4 }}>
                         <Box
                           sx={{
-                            p: 2.25,
                             borderRadius: "24px",
                             background: product.cor,
                             display: "grid",
                             gap: 1.25,
                             height: "100%",
                             alignContent: "start",
+                            overflow: "hidden",
                             boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.28)",
                           }}
                         >
+                          {product.imagemUrl ? (
+                            <Box
+                              component="img"
+                              src={product.imagemUrl}
+                              alt={product.imagemAlt ?? product.nome}
+                              sx={{
+                                width: "100%",
+                                height: 148,
+                                objectFit: "cover",
+                                display: "block",
+                              }}
+                            />
+                          ) : null}
+                          <Box sx={{ p: 2.25, display: "grid", gap: 1.25 }}>
                           <Typography variant="subtitle1" sx={{ fontWeight: 800, lineHeight: 1.2 }}>
                             {product.nome}
                           </Typography>
@@ -217,6 +293,27 @@ export default function CartPage() {
                               ? formatCurrency(product.precoUnitario)
                               : "Preco sob consulta"}
                           </Typography>
+                          <Button
+                            variant="contained"
+                            size="small"
+                            disabled={typeof product.precoUnitario !== "number"}
+                            onClick={() => {
+                              if (typeof product.precoUnitario !== "number") {
+                                return;
+                              }
+
+                              addItem({
+                                id: product.id,
+                                produtoId: product.produtoId,
+                                nome: product.nome,
+                                quantidade: 1,
+                                precoUnitario: product.precoUnitario,
+                              });
+                            }}
+                          >
+                            Adicionar
+                          </Button>
+                          </Box>
                         </Box>
                       </Grid>
                     ))}

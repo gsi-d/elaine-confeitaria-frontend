@@ -3,6 +3,7 @@
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
@@ -17,6 +18,8 @@ import {
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { enqueueSnackbar } from "notistack";
 import { useMemo, useState } from "react";
+import { useProducts } from "@/features/catalog/hooks/use-products";
+import { OrderItemsDialog } from "@/features/orders/components/order-items-dialog";
 import { OrderFormDialog } from "@/features/orders/components/order-form-dialog";
 import {
   useCreateOrder,
@@ -27,7 +30,12 @@ import {
 import { OrderFormValues } from "@/features/orders/schemas/order-schema";
 import { Order, OrderPayload } from "@/features/orders/types";
 
-const columns: GridColDef<Order>[] = [
+type OrdersColumnsContext = {
+  onOpenItems: (order: Order) => void;
+};
+
+function createColumns({ onOpenItems }: OrdersColumnsContext): GridColDef<Order>[] {
+  return [
   { field: "id", headerName: "ID", width: 90 },
   {
     field: "nomeRecebedor",
@@ -41,7 +49,7 @@ const columns: GridColDef<Order>[] = [
     field: "agendamento",
     headerName: "Horario",
     width: 150,
-    valueGetter: (_value, row) => row.horarioEntrega || row.horarioRetirada || "-",
+    valueGetter: (_value, row) => row.melhorHorarioEntrega || row.horarioEntrega || row.horarioRetirada || "-",
   },
   {
     field: "desconto",
@@ -58,10 +66,25 @@ const columns: GridColDef<Order>[] = [
   {
     field: "itens",
     headerName: "Itens",
-    width: 120,
-    valueGetter: (_value, row) => row.itens.length,
+    width: 180,
+    sortable: false,
+    filterable: false,
+    renderCell: ({ row }) => (
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<VisibilityRoundedIcon />}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenItems(row);
+        }}
+      >
+        {`${row.itens.length} item(ns)`}
+      </Button>
+    ),
   },
-];
+  ];
+}
 
 function toPayload(values: OrderFormValues): OrderPayload {
   return {
@@ -70,24 +93,35 @@ function toPayload(values: OrderFormValues): OrderPayload {
     complemento: values.complemento,
     referencia: values.referencia,
     tipoEntrega: values.tipoEntrega,
-    horarioEntrega: values.horarioEntrega,
-    horarioRetirada: values.horarioRetirada,
+    melhorHorarioEntrega: values.horarioEntrega || values.horarioRetirada || undefined,
     observacoes: values.observacoes,
+    anexo: [],
     desconto: values.desconto,
-    status: values.status,
     itens: values.itens,
   };
 }
 
 export default function OrdersPage() {
   const { data, isLoading, isError } = useOrders();
+  const { data: products = [] } = useProducts();
   const createOrder = useCreateOrder();
   const updateOrder = useUpdateOrder();
   const deleteOrder = useDeleteOrder();
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const orders = useMemo(() => (Array.isArray(data) ? data : []), [data]);
+  const columns = useMemo(
+    () =>
+      createColumns({
+        onOpenItems(order) {
+          setSelectedOrderId(order.id);
+          setDetailsOpen(true);
+        },
+      }),
+    [],
+  );
 
   const selectedOrder = useMemo(
     () => orders.find((order) => order.id === selectedOrderId) ?? null,
@@ -189,6 +223,11 @@ export default function OrdersPage() {
         initialData={selectedOrder}
         onClose={() => setEditOpen(false)}
         onSubmit={handleUpdate}
+      />
+      <OrderItemsDialog
+        order={detailsOpen ? selectedOrder : null}
+        products={products}
+        onClose={() => setDetailsOpen(false)}
       />
     </Box>
   );

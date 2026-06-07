@@ -1,3 +1,4 @@
+import axios from "axios";
 import { httpClient } from "@/lib/http/http-client";
 import { Order, OrderPayload } from "@/features/orders/types";
 
@@ -37,6 +38,19 @@ export const ordersService = {
   async update(id: number, payload: OrderPayload) {
     const { data } = await httpClient.put<Order>(`/pedidos/${id}`, payload);
     return data;
+  },
+  async updateStatus(id: number, status: string) {
+    try {
+      const { data } = await httpClient.patch<Order>(`/pedidos/${id}/status`, { status });
+      return data;
+    } catch (error) {
+      if (!axios.isAxiosError(error) || error.response?.status !== 400) {
+        throw error;
+      }
+
+      const { data } = await httpClient.patch<Order>(`/pedidos/${id}/status`, { novoStatus: status });
+      return data;
+    }
   },
   async remove(id: number) {
     await httpClient.delete(`/pedidos/${id}`);

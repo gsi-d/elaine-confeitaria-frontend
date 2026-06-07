@@ -1,9 +1,11 @@
 "use client";
 
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import {
   Alert,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
@@ -13,7 +15,9 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useMemo, useSyncExternalStore } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { useProducts } from "@/features/catalog/hooks/use-products";
+import { OrderItemsDialog } from "@/features/orders/components/order-items-dialog";
 import { useOrders } from "@/features/orders/hooks/use-orders";
 import { Order } from "@/features/orders/types";
 
@@ -22,7 +26,15 @@ function getScheduleLabel(order: Order): string {
 }
 
 function getRecipientLabel(order: Order): string {
-  return order.nomeRecebedor ?? "Nao informado";
+  if (order.nomeRecebedor) {
+    return order.nomeRecebedor;
+  }
+
+  if (order.tipoEntrega === "RETIRADA") {
+    return "Retirada no local";
+  }
+
+  return "Entrega sem recebedor";
 }
 
 export default function MyOrdersPage() {
@@ -32,11 +44,17 @@ export default function MyOrdersPage() {
     () => "",
   );
   const { data = [], isLoading, isError } = useOrders();
+  const { data: products = [] } = useProducts();
   const currentOrderId = useMemo(() => {
     const params = new URLSearchParams(search);
     const current = Number(params.get("current"));
     return Number.isFinite(current) ? current : null;
   }, [search]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const productNamesById = useMemo(
+    () => new Map(products.map((product) => [product.produtoId, product.nome] as const)),
+    [products],
+  );
   const orders = useMemo(
     () => [...data].sort((left, right) => right.id - left.id),
     [data],
@@ -139,11 +157,19 @@ export default function MyOrdersPage() {
                             bgcolor: "rgba(216,111,157,0.06)",
                           }}
                         >
-                          <Typography>Produto #{item.produtoId}</Typography>
+                          <Typography>{productNamesById.get(item.produtoId) ?? `Produto #${item.produtoId}`}</Typography>
                           <Typography>{item.quantidade} un.</Typography>
                         </Box>
                       ))}
                     </Box>
+                    <Button
+                      variant="outlined"
+                      startIcon={<VisibilityRoundedIcon />}
+                      sx={{ width: "fit-content" }}
+                      onClick={() => setSelectedOrder(order)}
+                    >
+                      Ver detalhes dos itens
+                    </Button>
                   </CardContent>
                 </Card>
               </Grid>
@@ -151,6 +177,12 @@ export default function MyOrdersPage() {
           })}
         </Grid>
       )}
+
+      <OrderItemsDialog
+        order={selectedOrder}
+        products={products}
+        onClose={() => setSelectedOrder(null)}
+      />
     </Box>
   );
 }
