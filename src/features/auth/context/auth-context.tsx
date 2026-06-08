@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, PropsWithChildren, useContext, useMemo, useState } from "react";
+import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authService } from "@/features/auth/api/auth-service";
 import { LoginFormValues } from "@/features/auth/schemas/login-schema";
@@ -21,18 +21,20 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const router = useRouter();
-  const initialToken = typeof window !== "undefined" ? tokenStorage.get() : undefined;
-  const initialSession = typeof window !== "undefined" ? authSessionStorage.get() : null;
-  const [isAuthenticated, setIsAuthenticated] = useState(() =>
-    Boolean(initialToken),
-  );
-  const [isAdmin, setIsAdmin] = useState(
-    () => initialSession?.isAdmin ?? resolveIsAdminFromToken(initialToken),
-  );
-  const [user, setUser] = useState<AuthUser | null>(
-    () => initialSession?.user ?? resolveUserFromToken(initialToken),
-  );
-  const isLoading = false;
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const initialToken = tokenStorage.get();
+    const initialSession = authSessionStorage.get();
+
+    setIsAuthenticated(Boolean(initialToken));
+    setIsAdmin(initialSession?.isAdmin ?? resolveIsAdminFromToken(initialToken));
+    setUser(initialSession?.user ?? resolveUserFromToken(initialToken));
+    setIsLoading(false);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           isAdmin: resolvedIsAdmin,
           user: resolvedUser,
         });
+        setIsLoading(false);
         setIsAuthenticated(true);
         setIsAdmin(resolvedIsAdmin);
         setUser(resolvedUser);
@@ -63,6 +66,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       logout() {
         tokenStorage.clear();
         authSessionStorage.clear();
+        setIsLoading(false);
         setIsAuthenticated(false);
         setIsAdmin(false);
         setUser(null);

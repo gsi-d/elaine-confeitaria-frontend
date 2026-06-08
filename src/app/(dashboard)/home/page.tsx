@@ -25,6 +25,8 @@ import { ProductDetailsDialog } from "@/features/catalog/components/product-deta
 import { useDeliveryConfiguration } from "@/features/delivery-config/hooks/use-delivery-config";
 import { CatalogProduct } from "@/features/catalog/types";
 import { useProducts } from "@/features/catalog/hooks/use-products";
+import { useOrders } from "@/features/orders/hooks/use-orders";
+import { countActiveOrders } from "@/features/orders/metrics";
 import { formatCurrency, formatDeliveryEstimate } from "@/lib/utils/format";
 
 export default function HomePage() {
@@ -36,9 +38,11 @@ export default function HomePage() {
   const { isAdmin } = useAuth();
   const { addItem, items, total } = useCart();
   const { data: products = [], isLoading, isError } = useProducts();
+  const { data: orders = [] } = useOrders(isAdmin);
   const { data: deliveryConfiguration } = useDeliveryConfiguration();
   const [selectedProduct, setSelectedProduct] = useState<CatalogProduct | null>(null);
   const categories = Array.from(new Set(products.map((product) => product.categoria)));
+  const activeOrdersCount = countActiveOrders(orders);
   const deliveryEstimateLabel = formatDeliveryEstimate(
     deliveryConfiguration?.tempoMinimoMinutos,
     deliveryConfiguration?.tempoMaximoMinutos,
@@ -219,7 +223,7 @@ export default function HomePage() {
             ? [
                 {
                   title: "Pedidos ativos",
-                  value: "24",
+                  value: String(activeOrdersCount),
                   icon: <ReceiptLongRoundedIcon color="primary" />,
                   helper: "Fila em andamento",
                 },

@@ -216,10 +216,10 @@ export function mapApiProduct(product: unknown, index: number): CatalogProduct |
     cor: fallbackGradients[index % fallbackGradients.length],
     tamanho: toStringValue(record.tamanho) ?? toStringValue(record.size) ?? undefined,
     imagemUrl:
-      extractImageUrlFromAttachment(record.anexo) ??
-      extractImageUrlFromAttachment(record.anexos) ??
       toStringValue(record.imagemUrl) ??
       toStringValue(record.imageUrl) ??
+      extractImageUrlFromAttachment(record.anexo) ??
+      extractImageUrlFromAttachment(record.anexos) ??
       undefined,
     imagemAlt: toStringValue(record.imagemAlt) ?? toStringValue(record.imageAlt) ?? nome,
   };

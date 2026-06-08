@@ -22,6 +22,7 @@ import { enqueueSnackbar } from "notistack";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useProducts } from "@/features/catalog/hooks/use-products";
 import { useOrders, useUpdateOrderStatus } from "@/features/orders/hooks/use-orders";
+import { isActiveOrder } from "@/features/orders/metrics";
 import { Order } from "@/features/orders/types";
 import { formatDeliveryTypeLabel, formatStatusLabel } from "@/lib/utils/format";
 
@@ -33,8 +34,6 @@ const statusOptions = [
   "FINALIZADO",
   "CANCELADO",
 ];
-
-const closedStatuses = new Set(["FINALIZADO", "CANCELADO", "ENTREGUE"]);
 
 function parseTimeToMinutes(value?: string): number | null {
   if (!value) {
@@ -115,7 +114,7 @@ export default function OperationsPage() {
   const activeOrders = useMemo(
     () =>
       orders
-        .filter((order) => !closedStatuses.has(order.status))
+        .filter(isActiveOrder)
         .sort((left, right) => {
           const leftSchedule =
             parseTimeToMinutes(left.melhorHorarioEntrega ?? left.horarioEntrega ?? left.horarioRetirada) ??

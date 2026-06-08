@@ -20,6 +20,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth";
 import { useProducts } from "@/features/catalog/hooks/use-products";
 import { OrderItemsDialog } from "@/features/orders/components/order-items-dialog";
 import { useGuestOrders } from "@/features/orders/hooks/use-guest-orders";
+import { filterOrdersForViewer } from "@/features/orders/ownership";
 import { useOrders } from "@/features/orders/hooks/use-orders";
 import { Order } from "@/features/orders/types";
 import { formatDeliveryTypeLabel, formatStatusLabel } from "@/lib/utils/format";
@@ -41,7 +42,7 @@ function getRecipientLabel(order: Order): string {
 }
 
 export default function MyOrdersPage() {
-  const { isAuthenticated } = useAuth();
+  const { isAdmin, isAuthenticated, user } = useAuth();
   const search = useSyncExternalStore(
     () => () => {},
     () => window.location.search,
@@ -60,10 +61,10 @@ export default function MyOrdersPage() {
     () => new Map(products.map((product) => [product.produtoId, product.nome] as const)),
     [products],
   );
-  const orders = useMemo(
-    () => [...(isAuthenticated ? data : guestOrders)].sort((left, right) => right.id - left.id),
-    [data, guestOrders, isAuthenticated],
-  );
+  const orders = useMemo(() => {
+    const sourceOrders = isAuthenticated ? filterOrdersForViewer(data, user, isAdmin) : guestOrders;
+    return [...sourceOrders].sort((left, right) => right.id - left.id);
+  }, [data, guestOrders, isAdmin, isAuthenticated, user]);
   const shouldShowLoading = isAuthenticated && isLoading;
   const shouldShowError = isAuthenticated && isError;
 
